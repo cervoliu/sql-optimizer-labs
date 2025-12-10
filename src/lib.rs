@@ -21,7 +21,26 @@ define_language! {
         Constant(Value),            // null, true, 1, 'hello'
         Column(Column),             // t.a, b, c
 
-        // TODO: add more nodes
+        // list
+        "list" = List(Vec<Id>),
+
+        // operations
+        "isnull" = IsNull(Id),
+        "-" = Neg(Id),
+        "+" = Add([Id; 2]),
+        "-" = Sub([Id; 2]),
+        "*" = Mul([Id; 2]),
+        "/" = Div([Id; 2]),
+        "=" = Eq([Id; 2]),
+        "<>" = Neq([Id; 2]),
+        ">" = Gt([Id; 2]),
+        "<" = Lt([Id; 2]),
+        ">=" = Gte([Id; 2]),
+        "<=" = Lte([Id; 2]),
+        "not" = Not(Id),
+        "and" = And([Id; 2]),
+        "or" = Or([Id; 2]),
+        "xor" = Xor([Id; 2]),
     }
 }
 
