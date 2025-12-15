@@ -53,7 +53,7 @@ pub struct ExprAnalysis;
 /// See [`egg::Analysis`] for how data is being processed.
 #[derive(Debug)]
 pub struct Data {
-    // TODO: add analysis data
+
 }
 
 impl Analysis<Expr> for ExprAnalysis {
@@ -61,16 +61,17 @@ impl Analysis<Expr> for ExprAnalysis {
 
     /// Analyze a node and give the result.
     fn make(egraph: &EGraph, enode: &Expr) -> Self::Data {
-        todo!()
+        return Data {
+        };
     }
 
     /// Merge the analysis data with previous one.
     fn merge(&mut self, to: &mut Self::Data, from: Self::Data) -> DidMerge {
-        todo!()
+        return DidMerge(false, false);
     }
 
     /// Modify the graph after analyzing a node.
     fn modify(egraph: &mut EGraph, id: Id) {
-        todo!()
+        // do nothing
     }
 }
