@@ -12,3 +12,17 @@ egg::test_fn! {
     rules(),
     "(/ (* a 2) 2)" => "a",
 }
+
+egg::test_fn! {
+    #[should_panic]
+    mul_div_unknown_denominator,
+    rules(),
+    "(/ (* a b) b)" => "a",
+}
+
+egg::test_fn! {
+    #[should_panic]
+    mul_div_denominator_simplifies,
+    rules(),
+    "(/ (* a (+ b 0)) (+ b 0))" => "a",
+}
