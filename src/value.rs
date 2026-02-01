@@ -16,6 +16,12 @@ pub enum Value {
     String(String),
 }
 
+impl Value {
+    pub fn is_zero(&self) -> bool {
+        matches!(self, Value::Int(0))
+    }
+}
+
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

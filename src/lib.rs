@@ -11,6 +11,8 @@ mod value;
 
 pub use value::*;
 
+use crate::expr::ConstValue;
+
 pub type RecExpr = egg::RecExpr<Expr>;
 pub type EGraph = egg::EGraph<Expr, ExprAnalysis>;
 pub type Rewrite = egg::Rewrite<Expr, ExprAnalysis>;
@@ -53,7 +55,7 @@ pub struct ExprAnalysis;
 /// See [`egg::Analysis`] for how data is being processed.
 #[derive(Debug)]
 pub struct Data {
-
+    pub constant: ConstValue,
 }
 
 impl Analysis<Expr> for ExprAnalysis {
@@ -61,13 +63,17 @@ impl Analysis<Expr> for ExprAnalysis {
 
     /// Analyze a node and give the result.
     fn make(egraph: &EGraph, enode: &Expr) -> Self::Data {
-        return Data {
-        };
+        Data {
+            constant: match enode {
+                Expr::Constant(v) => Some(v.clone()),
+                _ => None,
+            },
+        }
     }
 
     /// Merge the analysis data with previous one.
     fn merge(&mut self, to: &mut Self::Data, from: Self::Data) -> DidMerge {
-        return DidMerge(false, false);
+        egg::merge_max(&mut to.constant, from.constant)
     }
 
     /// Modify the graph after analyzing a node.
