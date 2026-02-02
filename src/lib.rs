@@ -11,7 +11,7 @@ mod value;
 
 pub use value::*;
 
-use crate::expr::ConstValue;
+use crate::expr::{ConstValue, eval_constant};
 
 pub type RecExpr = egg::RecExpr<Expr>;
 pub type EGraph = egg::EGraph<Expr, ExprAnalysis>;
@@ -64,10 +64,7 @@ impl Analysis<Expr> for ExprAnalysis {
     /// Analyze a node and give the result.
     fn make(egraph: &EGraph, enode: &Expr) -> Self::Data {
         Data {
-            constant: match enode {
-                Expr::Constant(v) => Some(v.clone()),
-                _ => None,
-            },
+            constant: eval_constant(egraph, enode)
         }
     }
 
@@ -78,6 +75,9 @@ impl Analysis<Expr> for ExprAnalysis {
 
     /// Modify the graph after analyzing a node.
     fn modify(egraph: &mut EGraph, id: Id) {
-        // do nothing
+        if let Some(val) = &egraph[id].data.constant {
+            let new_id = egraph.add(Expr::Constant(val.clone()));
+            egraph.union(id, new_id);
+        }
     }
 }

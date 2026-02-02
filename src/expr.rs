@@ -87,7 +87,41 @@ pub fn rules() -> Vec<Rewrite> { vec![
     rw!("xor-assoc"; "(xor ?a (xor ?b ?c))" => "(xor (xor ?a ?b) ?c)"),
 ]}
 
+/// Some for a known constant, None for unknown.
 pub type ConstValue = Option<Value>;
+
+pub fn eval_constant(egraph: &EGraph, enode: &Expr) -> ConstValue {
+    use Expr::*;
+    let x = |i: &Id| egraph[*i].data.constant.as_ref();
+    Some(match enode {
+        Constant(v) => v.clone(),
+        Column(_) => return None,
+        List(_) => return None,
+        Neg(a) => -x(a)?.clone(),
+        Not(a) => !x(a)?.clone(),
+        IsNull(a) => x(a)?.is_null().into(),
+        Add([a, b]) => x(a)? + x(b)?,
+        Sub([a, b]) => x(a)? - x(b)?,
+        Mul([a, b]) => x(a)? * x(b)?,
+        Div([a, b]) => {
+            let denominator = x(b)?;
+            if denominator.is_zero() {
+                return None;
+            }
+            x(a)? / denominator
+        }
+        Eq([a, b]) => (x(a)? == x(b)?).into(),
+        Neq([a, b]) => (x(a)? != x(b)?).into(),
+        Gt([a, b]) => (x(a)? > x(b)?).into(),
+        Lt([a, b]) => (x(a)? < x(b)?).into(),
+        Gte([a, b]) => (x(a)? >= x(b)?).into(),
+        Lte([a, b]) => (x(a)? <= x(b)?).into(),
+        And([a, b]) => x(a)?.and(x(b)?).into(),
+        Or([a, b]) => x(a)?.or(x(b)?).into(),
+        Xor([a, b]) => x(a)?.xor(x(b)?).into(),
+        _ => return None
+    })
+}
 
 fn is_not_zero(var: &str) -> impl Fn(&mut EGraph, Id, &Subst) -> bool {
     let v = var.parse::<Var>().unwrap();
