@@ -16,12 +16,6 @@ pub enum Value {
     String(String),
 }
 
-impl Value {
-    pub fn is_zero(&self) -> bool {
-        matches!(self, Value::Int(0))
-    }
-}
-
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -49,5 +43,104 @@ impl FromStr for Value {
         Err(s.to_string())
     }
 }
+
+impl Value {
+    pub fn is_zero(&self) -> bool {
+        matches!(self, Value::Int(0))
+    }
+    pub fn is_null(&self) -> bool {
+        matches!(self, Value::Null)
+    }
+}
+
+impl From<bool> for Value {
+    fn from(b: bool) -> Self {
+        Value::Bool(b)
+    }
+}
+
+impl Value {
+    pub fn and(&self, other: &Self) -> Self {
+        use Value::*;
+        match (self, other) {
+            (&Bool(a), &Bool(b)) => Bool(a && b),
+            (&Bool(false), _) | (_, &Bool(false)) => Bool(false),
+            (Null, _) | (_, Null) => Null,
+            _ => panic!("unsupported AND between {:?} and {:?}", self, other),
+        }
+    }
+    pub fn or(&self, other: &Self) -> Self {
+        use Value::*;
+        match (self, other) {
+            (&Bool(a), &Bool(b)) => Bool(a || b),
+            (&Bool(true), _) | (_, &Bool(true)) => Bool(true),
+            (Null, _) | (_, Null) => Null,
+            _ => panic!("unsupported OR between {:?} and {:?}", self, other),
+        }
+    }
+    pub fn xor(&self, other: &Self) -> Self {
+        use Value::*;
+        match (self, other) {
+            (&Bool(a), &Bool(b)) => Bool(a ^ b),
+            (Null, _) | (_, Null) => Null,
+            _ => panic!("unsupported XOR between {:?} and {:?}", self, other),
+        }
+    }
+}
+
+impl std::ops::Not for Value {
+    type Output = Value;
+    fn not(self) -> Self::Output {
+        use Value::*;
+        match self {
+            Bool(b) => Bool(!b),
+            Null => Null,
+            _ => panic!("unsupported negation for {:?}", self),
+        }
+    }
+}
+
+impl std::ops::Neg for Value {
+    type Output = Value;
+    fn neg(self) -> Self::Output {
+        use Value::*;
+        match self {
+            Int(i) => Int(-i),
+            Null => Null,
+            _ => panic!("unsupported negation for {:?}", self),
+        }
+    }
+}
+
+macro_rules! impl_arith_for_value {
+    ($Trait:ident, $fn:ident) => {
+        // impl for references
+        impl std::ops::$Trait for &Value {
+            type Output = Value;
+            fn $fn(self, other: Self) -> Self::Output {
+                use Value::*;
+                match (self, other) {
+                    (Int(a), Int(b)) => Int(a.$fn(*b)),
+                    (Null, _) | (_, Null) => Null,
+                    _ => panic!("unsupported {} between {:?} and {:?}", stringify!($Trait), self, other),
+                }
+            }
+        }
+
+        // impl for owned
+        impl std::ops::$Trait for Value {
+            type Output = Value;
+            fn $fn(self, other: Self) -> Self::Output {
+                (&self).$fn(&other) // delegate to reference impl
+            }
+        }
+    };
+}
+
+impl_arith_for_value!(Add, add);
+impl_arith_for_value!(Sub, sub);
+impl_arith_for_value!(Mul, mul);
+impl_arith_for_value!(Div, div);
+impl_arith_for_value!(Rem, rem);
 
 pub type Column = egg::Symbol;
