@@ -4,6 +4,12 @@ Build a SQL optimizer in 1000 lines of Rust using [egg](https://egraphs-good.git
 
 🚧 Under construction 🚧 Stay tuned 👀
 
+For explanation of implementation, please refer [src/README.md](src/README.md).
+
+For tutorials (in Chinese), please refer [欢度元旦，用蛋写个 SQL 优化器吧（上）
+](https://zhuanlan.zhihu.com/p/596119553) and [欢度元宵，用蛋写个 SQL 优化器吧！
+](https://zhuanlan.zhihu.com/p/604073131).
+
 ## Tasks
 
 Fill the code in `src` and pass the tests in `tests`!
