@@ -50,6 +50,9 @@ define_language! {
         "count" = Count(Id),
 
         // plans
+        // we need an empty node that produces zero rows
+        // while preserving the schema
+        "empty" = Empty(Id),
         "scan" = Scan([Id; 2]),
         "values" = Values(Id),
         "proj" = Project([Id; 2]),

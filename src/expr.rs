@@ -8,6 +8,7 @@ use super::*;
 /// Returns all rules of expression simplification.
 #[rustfmt::skip]
 pub fn rules() -> Vec<Rewrite> { vec![
+    // arithmetic
     rw!("add-zero";  "(+ ?a 0)" => "?a"),
     rw!("add-comm";  "(+ ?a ?b)" => "(+ ?b ?a)"),
     rw!("add-assoc"; "(+ ?a (+ ?b ?c))" => "(+ (+ ?a ?b) ?c)"),
