@@ -22,8 +22,6 @@ define_language! {
         // values
         Constant(Value),            // null, true, 1, 'hello'
         Column(Column),             // t.a, b, c
-
-        // list
         "list" = List(Vec<Id>),
 
         // operations
@@ -43,6 +41,28 @@ define_language! {
         "and" = And([Id; 2]),
         "or" = Or([Id; 2]),
         "xor" = Xor([Id; 2]),
+
+        // Aggregations
+        "max" = Max(Id),
+        "min" = Min(Id),
+        "sum" = Sum(Id),
+        "avg" = Avg(Id),
+        "count" = Count(Id),
+
+        // plans
+        "scan" = Scan([Id; 2]),
+        "values" = Values(Id),
+        "proj" = Project([Id; 2]),
+        "filter" = Filter([Id; 2]),
+        "order" = Order([Id; 2]),
+        "asc" = Asc(Id), "desc" = Desc(Id),
+        "limit" = Limit([Id; 3]),
+        "topn" = TopN([Id; 4]),
+        "agg" = Aggregate([Id; 3]),
+        "join" = Join([Id; 4]),
+        "hashjoin" = HashJoin([Id; 5]),
+        "inner" = Inner, "left_outer" = LeftOuter,
+        "right_outer" = RightOuter, "full_outer" = FullOuter,
     }
 }
 
