@@ -56,6 +56,20 @@ pub fn join_rules() -> Vec<Rewrite> { vec![
         "(join inner ?cond1 ?left (join inner ?cond2 ?mid ?right))"
         if columns_is_disjoint("?cond2", "?left")
     ),
+    rw!("hash-join-on-one-eq";
+        "(join ?type (= ?el ?er) ?left ?right)" =>
+        "(hashjoin ?type (list ?el) (list ?er) ?left ?right)"
+        if columns_is_subset("?el", "?left")
+        if columns_is_subset("?er", "?right")
+    ),
+    rw!("hash-join-on-two-eq";
+        "(join ?type (and (= ?l1 ?r1) (= ?l2 ?r2)) ?left ?right)" =>
+        "(hashjoin ?type (list ?l1 ?l2) (list ?r1 ?r2) ?left ?right)"
+        if columns_is_subset("?l1", "?left")
+        if columns_is_subset("?l2", "?left")
+        if columns_is_subset("?r1", "?right")
+        if columns_is_subset("?r2", "?right")
+    ),
 ]}
 
 /// Pushdown projections and prune unused columns.
