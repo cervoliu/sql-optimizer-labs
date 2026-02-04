@@ -2,7 +2,7 @@
 
 use std::hash::Hash;
 
-use egg::{define_language, Analysis, DidMerge, Id};
+use egg::{define_language, Analysis, DidMerge, Id, Language};
 
 pub mod agg;
 pub mod expr;
@@ -12,6 +12,7 @@ mod value;
 pub use value::*;
 
 use crate::expr::{ConstValue, eval_constant};
+use crate::plan::{ColumnSet, analyze_columns, merge};
 
 pub type RecExpr = egg::RecExpr<Expr>;
 pub type EGraph = egg::EGraph<Expr, ExprAnalysis>;
@@ -53,19 +54,25 @@ define_language! {
         // we need an empty node that produces zero rows
         // while preserving the schema
         "empty" = Empty(Id),
-        "scan" = Scan([Id; 2]),
-        "values" = Values(Id),
-        "proj" = Project([Id; 2]),
-        "filter" = Filter([Id; 2]),
-        "order" = Order([Id; 2]),
-        "asc" = Asc(Id), "desc" = Desc(Id),
-        "limit" = Limit([Id; 3]),
-        "topn" = TopN([Id; 4]),
-        "agg" = Aggregate([Id; 3]),
-        "join" = Join([Id; 4]),
-        "hashjoin" = HashJoin([Id; 5]),
-        "inner" = Inner, "left_outer" = LeftOuter,
-        "right_outer" = RightOuter, "full_outer" = FullOuter,
+        "scan" = Scan([Id; 2]),     // (scan table [column..])
+        "values" = Values(Id),      // (values [row[column..]..])
+        "proj" = Proj([Id; 2]),  // (proj [column..] child)
+        "filter" = Filter([Id; 2]), // (filter condition child)
+        "order" = Order([Id; 2]),   // (order [order_key..] child)
+            "asc" = Asc(Id),            // order key types
+            "desc" = Desc(Id),
+        "limit" = Limit([Id; 3]),   // (limit limit offset child)
+        "topn" = TopN([Id; 4]),     // (topn limit offset [order_key..] child)
+        "agg" = Agg([Id; 3]), // (agg aggs=[expr..] group_keys=[expr..] child)
+                                        // expressions must be aggs
+                                        // output = aggs || group_keys
+        "join" = Join([Id; 4]),     // (join type condition left right)
+        "hashjoin" = HashJoin([Id; 5]), // (hashjoin type [left_key..] [right_key..] left right)
+                                        // left and right keys must match
+            "inner" = Inner,            // join types
+            "left_outer" = LeftOuter,
+            "right_outer" = RightOuter,
+            "full_outer" = FullOuter,
     }
 }
 
@@ -79,6 +86,7 @@ pub struct ExprAnalysis;
 #[derive(Debug)]
 pub struct Data {
     pub constant: ConstValue,
+    pub columns: ColumnSet,
 }
 
 impl Analysis<Expr> for ExprAnalysis {
@@ -87,13 +95,16 @@ impl Analysis<Expr> for ExprAnalysis {
     /// Analyze a node and give the result.
     fn make(egraph: &EGraph, enode: &Expr) -> Self::Data {
         Data {
-            constant: eval_constant(egraph, enode)
+            constant: eval_constant(egraph, enode),
+            columns: analyze_columns(egraph, enode),
         }
     }
 
     /// Merge the analysis data with previous one.
     fn merge(&mut self, to: &mut Self::Data, from: Self::Data) -> DidMerge {
-        egg::merge_max(&mut to.constant, from.constant)
+        let merge_constant = egg::merge_max(&mut to.constant, from.constant);
+        let merge_columns = plan::merge(&mut to.columns, from.columns);
+        merge_constant | merge_columns
     }
 
     /// Modify the graph after analyzing a node.
