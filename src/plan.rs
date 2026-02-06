@@ -3,7 +3,7 @@
 use std::{collections::HashSet, vec};
 
 use super::*;
-use egg::{rewrite as rw, Subst, Var};
+use egg::{rewrite as rw, Pattern, Subst, Var};
 
 /// Returns the rules that always improve the plan.
 pub fn rules() -> Vec<Rewrite> {
@@ -79,31 +79,47 @@ pub fn projection_pushdown_rules() -> Vec<Rewrite> { vec![
 ]}
 
 pub fn predicate_pushdown_rules() -> Vec<Rewrite> { vec![
-    rw!("pushdown-filter-inner-join";
+    pushdown("filter", "?cond", "order", "?keys"),
+    pushdown("filter", "?cond", "limit", "?limit ?offset"),
+    pushdown("filter", "?cond", "topn", "?limit ?offset ?keys"),
+    rw!("pushdown-filter-over-inner-join";
         "(filter ?cond (join inner ?on ?left ?right))" =>
         "(join inner (and ?on ?cond) ?left ?right)"
     ),
-    rw!("pushdown-filter-inner-join-left";
+    rw!("pushdown-filter-over-inner-join-left";
         "(join inner ?cond ?left ?right)" =>
         "(join inner true (filter ?cond ?left) ?right)"
         if columns_is_subset("?cond", "?left")
     ),
-    rw!("pushdown-filter-inner-join-left-1";
+    rw!("pushdown-filter-over-inner-join-left-1";
         "(join inner (and ?cond1 ?cond2) ?left ?right)" =>
         "(join inner ?cond2 (filter ?cond1 ?left) ?right)"
         if columns_is_subset("?cond1", "?left")
     ),
-    rw!("pushdown-filter-inner-join-right";
+    rw!("pushdown-filter-over-inner-join-right";
         "(join inner ?cond ?left ?right)" =>
         "(join inner true ?left (filter ?cond ?right))"
         if columns_is_subset("?cond", "?right")
     ),
-    rw!("pushdown-filter-inner-join-right-2";
+    rw!("pushdown-filter-over-inner-join-right-2";
         "(join inner (and ?cond1 ?cond2) ?left ?right)" =>
         "(join inner ?cond1 ?left (filter ?cond2 ?right))"
         if columns_is_subset("?cond2", "?right")
     )
 ]}
+
+/// Returns a rule to pushdown plan `a` through `b`.
+fn pushdown(a: &str, a_args: &str, b: &str, b_args: &str) -> Rewrite {
+    let name = format!("pushdown-{a}-over-{b}");
+    let searcher = format!("({a} {a_args} ({b} {b_args} ?child))")
+        .parse::<Pattern<_>>()
+        .unwrap();
+    let applier = format!("({b} {b_args} ({a} {a_args} ?child))")
+        .parse::<Pattern<_>>()
+        .unwrap();
+    Rewrite::new(name, searcher, applier).unwrap()
+}
+
 pub type ColumnSet = HashSet<Column>;
 
 pub fn analyze_columns(egraph: &EGraph, enode: &Expr) -> ColumnSet {
