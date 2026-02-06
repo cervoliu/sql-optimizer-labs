@@ -111,6 +111,7 @@ pub fn analyze_columns(egraph: &EGraph, enode: &Expr) -> ColumnSet {
     let x = |i: &Id| &egraph[*i].data.columns;
     match enode {
         Column(col) => [*col].into_iter().collect(),
+        Scan([_, cols]) => x(cols).clone(),
         Proj([exprs, _]) => x(exprs).clone(),
         Agg([exprs, group_keys, _]) => {
             x(exprs).union(x(group_keys)).cloned().collect()
