@@ -2,7 +2,7 @@
 
 use std::hash::Hash;
 
-use egg::{define_language, Analysis, DidMerge, Id, Language};
+use egg::{Analysis, DidMerge, Id, Language, Var, define_language};
 
 pub mod agg;
 pub mod expr;
@@ -52,7 +52,7 @@ define_language! {
 
         // plans
         // we need an empty node that produces zero rows
-        // while preserving the schema
+        // while preserving the schema (child node)
         "empty" = Empty(Id),
         "scan" = Scan([Id; 2]),     // (scan table [column..])
         "values" = Values(Id),      // (values [row[column..]..])
@@ -73,6 +73,35 @@ define_language! {
             "left_outer" = LeftOuter,
             "right_outer" = RightOuter,
             "full_outer" = FullOuter,
+        // helper internal nodes used in projection pushdown rules
+        "column-merge" = ColumnMerge([Id; 2]), // (column-merge list1 list2)
+                                                    // return a list of columns from list1 and list2
+        "column-prune" = ColumnPrune([Id; 2]), // (column-prune filter list)
+                                                    // remove element from `list` whose column set is not a subset of `filter`
+    }
+}
+
+impl Expr {
+    fn as_list(&self) -> &[Id] {
+        match self {
+            Expr::List(list) => list,
+            _ => panic!("expected a list"),
+        }
+    }
+}
+
+trait ExprExt {
+    fn as_list(&self) -> &[Id];
+}
+
+impl<D> ExprExt for egg::EClass<Expr, D> {
+    fn as_list(&self) -> &[Id] {
+        self.iter()
+            .find_map(|e| match e {
+                Expr::List(list) => Some(list),
+                _ => None,
+            })
+            .expect("not list")
     }
 }
 
@@ -114,4 +143,11 @@ impl Analysis<Expr> for ExprAnalysis {
             egraph.union(id, new_id);
         }
     }
+}
+
+/// Create a [`Var`] from string.
+///
+/// This is a helper function for submodules.
+fn var(s: &str) -> Var {
+    s.parse().expect("invalid variable")
 }

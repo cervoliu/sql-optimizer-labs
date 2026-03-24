@@ -3,7 +3,7 @@
 use std::{collections::HashSet, vec};
 
 use super::*;
-use egg::{rewrite as rw, Pattern, Subst, Var};
+use egg::{Applier, Pattern, PatternAst, Subst, Symbol, Var, rewrite as rw};
 
 /// Returns the rules that always improve the plan.
 pub fn rules() -> Vec<Rewrite> {
@@ -75,8 +75,120 @@ pub fn join_rules() -> Vec<Rewrite> { vec![
 /// Pushdown projections and prune unused columns.
 #[rustfmt::skip]
 pub fn projection_pushdown_rules() -> Vec<Rewrite> { vec![
-    // TODO: add rules
+    rw!("pushdown-proj-order";
+        "(proj ?exprs (order ?keys ?child))" =>
+        "(proj ?exprs (order ?keys (proj (column-merge ?exprs ?keys) ?child)))"
+    ),
+    rw!("pushdown-proj-topn";
+        "(proj ?exprs (topn ?limit ?offset ?keys ?child))" =>
+        "(proj ?exprs (topn ?limit ?offset ?keys (proj (column-merge ?exprs ?keys) ?child)))"
+    ),
+    rw!("pushdown-proj-filter";
+        "(proj ?exprs (filter ?cond ?child))" =>
+        "(proj ?exprs (filter ?cond (proj (column-merge ?exprs ?cond) ?child)))"
+    ),
+    rw!("pushdown-proj-agg";
+        "(proj ?exprs (agg ?aggs ?group_keys ?child))" =>
+        "(proj ?exprs (agg ?aggs ?group_keys (proj (column-merge ?aggs ?group_keys) ?child)))"
+    ),
+    rw!("pushdown-proj-join";
+        "(proj ?exprs (join ?type ?on ?left ?right))" =>
+        "(proj ?exprs (join ?type ?on
+            (proj (column-prune ?left (column-merge ?exprs ?on)) ?left)
+            (proj (column-prune ?right (column-merge ?exprs ?on)) ?right)
+        ))"
+    ),
+    rw!("pushdown-proj-scan";
+        "(proj ?exprs (scan ?table ?columns))" =>
+        "(scan ?table (column-prune ?exprs ?columns))"
+    ),
+    rw!("column-merge";
+        "(column-merge ?list1 ?list2)" =>
+        { ColumnMerge {
+            lists: [var("?list1"), var("?list2")],
+        }}
+    ),
+    rw!("column-prune";
+        "(column-prune ?filter ?list)" =>
+        { ColumnPrune {
+            filter: var("?filter"),
+            list: var("?list"),
+        }}
+        if is_list("?list")
+    ),
 ]}
+
+struct ColumnMerge {
+    lists: [Var; 2],
+}
+
+impl Applier<Expr, ExprAnalysis> for ColumnMerge {
+    fn apply_one(
+        &self,
+        egraph: &mut EGraph,
+        eclass: Id,
+        subst: &Subst,
+        _searcher_ast: Option<&PatternAst<Expr>>,
+        _rule_name: Symbol,
+    ) -> Vec<Id> {
+        let list1 = &egraph[subst[self.lists[0]]].data.columns;
+        let list2 = &egraph[subst[self.lists[1]]].data.columns;
+        let mut list: Vec<&Column> = list1.union(list2).collect();
+        list.sort_unstable_by_key(|col| col.as_str());
+        let list = list
+            .into_iter()
+            .map(|col| egraph.lookup(Expr::Column(col.clone())).unwrap())
+            .collect();
+        let id = egraph.add(Expr::List(list));
+
+        if egraph.union(eclass, id) {
+            vec![eclass]
+        } else {
+            vec![]
+        }
+    }
+}
+
+struct ColumnPrune {
+    filter: Var,
+    list: Var,
+}
+
+impl Applier<Expr, ExprAnalysis> for ColumnPrune {
+    fn apply_one(
+        &self,
+        egraph: &mut EGraph,
+        eclass: Id,
+        subst: &Subst,
+        _searcher_ast: Option<&PatternAst<Expr>>,
+        _rule_name: Symbol,
+    ) -> Vec<Id> {
+        let columns = &egraph[subst[self.filter]].data.columns;
+        let list = egraph[subst[self.list]].as_list();
+        let pruned = list
+            .iter()
+            .cloned()
+            .filter(|id| egraph[*id].data.columns.is_subset(columns))
+            .collect();
+        let id = egraph.add(Expr::List(pruned));
+
+        if egraph.union(eclass, id) {
+            vec![eclass]
+        } else {
+            vec![]
+        }
+    }
+}
+
+fn is_list(v: &str) -> impl Fn(&mut EGraph, Id, &Subst) -> bool {
+    let v = var(v);
+    move |egraph, _, subst| {
+        egraph[subst[v]]
+            .iter()
+            .any(|node| matches!(node, Expr::List(_)))
+    }
+}
+
 
 pub fn predicate_pushdown_rules() -> Vec<Rewrite> { vec![
     pushdown("filter", "?cond", "order", "?keys"),
