@@ -23,6 +23,7 @@ define_language! {
         // values
         Constant(Value),            // null, true, 1, 'hello'
         Column(Column),             // t.a, b, c
+        "`" = Nested(Id),           // (` expr) wrapper to prevent rewrites from breaking agg schema mapping
         "list" = List(Vec<Id>),
 
         // operations
@@ -116,6 +117,7 @@ pub struct ExprAnalysis;
 pub struct Data {
     pub constant: ConstValue,
     pub columns: ColumnSet,
+    pub aggs: agg::AggSet,
 }
 
 impl Analysis<Expr> for ExprAnalysis {
@@ -126,6 +128,7 @@ impl Analysis<Expr> for ExprAnalysis {
         Data {
             constant: eval_constant(egraph, enode),
             columns: analyze_columns(egraph, enode),
+            aggs: agg::analyze_aggs(egraph, enode),
         }
     }
 
@@ -133,7 +136,8 @@ impl Analysis<Expr> for ExprAnalysis {
     fn merge(&mut self, to: &mut Self::Data, from: Self::Data) -> DidMerge {
         let merge_constant = egg::merge_max(&mut to.constant, from.constant);
         let merge_columns = plan::merge(&mut to.columns, from.columns);
-        merge_constant | merge_columns
+        let merge_aggs = egg::merge_max(&mut to.aggs, from.aggs);
+        merge_constant | merge_columns | merge_aggs
     }
 
     /// Modify the graph after analyzing a node.
