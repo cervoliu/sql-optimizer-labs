@@ -1,0 +1,6 @@
+name,family,build_ms,optimize_ms_median,optimize_ms_min,optimize_ms_max,iterations,egraph_nodes,egraph_classes,memo_size,rule_applications,best_cost,before_total_nodes,after_total_nodes,before_plan_nodes,after_plan_nodes,before_scan_columns,after_scan_columns,before_join_nodes,after_join_nodes,after_hashjoin_nodes,before_depth,after_depth,after_empty_scan_schemas,after_bare_list_symbols,after_hashjoin_empty_keys,after_hashjoin_non_column_keys,stop_reason
+q1,TPC-H Q1 Pricing Summary Report Query,0.589,5.809,5.643,5.893,7,197,68,197,104,105,55,54,6,5,15,15,0,0,0,10,9,0,0,0,0,Some(Saturated)
+q10,TPC-H Q10 Returned Item Reporting Query,0.731,1441.387,1439.532,1549.337,24,51292,7519,51292,19537,102,75,67,13,13,22,12,3,2,1,12,12,1,0,0,1,Some(NodeLimit(51292))
+q3,TPC-H Q3 Shipping Priority Query,0.668,1323.862,1317.557,1331.676,26,43190,1591,43190,17097,68,65,45,11,11,21,0,2,1,1,11,10,3,0,1,1,Some(Saturated)
+q5,TPC-H Q5 Local Supplier Volume Query,0.802,2246.385,2170.531,2290.522,25,50801,16119,50801,22334,116,84,80,16,14,28,28,5,3,2,13,10,0,0,0,1,Some(NodeLimit(50801))
+q6,TPC-H Q6 Forecasting Revenue Change Query,0.373,9.953,9.830,10.515,7,414,70,414,273,46,40,32,6,5,11,4,0,0,0,10,10,0,1,0,0,Some(Saturated)

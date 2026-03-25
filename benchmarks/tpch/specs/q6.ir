@@ -1,0 +1,19 @@
+name: q6
+family: TPC-H Q6 Forecasting Revenue Change Query
+note: Lowered from the real TPC-H Q6 template. Decimal discounts are represented as integer percentage points in the toy IR.
+
+[select]
+(list (sum (* l_extendedprice l_discount)))
+
+[from]
+(scan lineitem (list
+    l_orderkey l_partkey l_suppkey l_linenumber
+    l_quantity l_extendedprice l_discount l_tax
+    l_shipdate l_commitdate l_receiptdate
+))
+
+[where]
+(and
+    (and (>= l_shipdate 19940101) (< l_shipdate 19950101))
+    (and (and (>= l_discount 5) (<= l_discount 7)) (< l_quantity 24))
+)

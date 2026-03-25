@@ -1,0 +1,37 @@
+name: q5
+family: TPC-H Q5 Local Supplier Volume Query
+note: Direct lowering of TPC-H Q5 with the ASIA region and the 1994 one-year orderdate window.
+
+[select]
+(list n_name (sum (* l_extendedprice (- 1 l_discount))))
+
+[from]
+(join inner (= n_regionkey r_regionkey)
+    (join inner (= s_nationkey n_nationkey)
+        (join inner (= l_suppkey s_suppkey)
+            (join inner (= o_orderkey l_orderkey)
+                (join inner (= c_custkey o_custkey)
+                    (scan customer (list c_custkey c_nationkey c_name c_phone c_acctbal c_address))
+                    (scan orders (list o_orderkey o_custkey o_orderdate o_totalprice o_orderstatus))
+                )
+                (scan lineitem (list l_orderkey l_suppkey l_extendedprice l_discount l_shipdate l_quantity))
+            )
+            (scan supplier (list s_suppkey s_name s_nationkey s_phone s_acctbal))
+        )
+        (scan nation (list n_nationkey n_name n_regionkey))
+    )
+    (scan region (list r_regionkey r_name r_comment))
+)
+
+[where]
+(and (= c_nationkey s_nationkey)
+    (and (= r_name 'ASIA')
+        (and (>= o_orderdate 19940101) (< o_orderdate 19950101))
+    )
+)
+
+[groupby]
+(list n_name)
+
+[orderby]
+(list (desc (sum (* l_extendedprice (- 1 l_discount)))))

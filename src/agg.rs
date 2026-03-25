@@ -142,6 +142,9 @@ impl AggExtractor<'_> {
             return Ok(self.egraph.add(Expr::Nested(id)));
         }
         if let Expr::Column(col) = &expr {
+            if col.as_str() == "list" {
+                return Ok(id);
+            }
             return Err(Error::ColumnNotInAgg(col.to_string()));
         }
         for child in expr.children_mut() {

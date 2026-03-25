@@ -1,0 +1,29 @@
+name: q3
+family: TPC-H Q3 Shipping Priority Query
+note: Direct lowering of TPC-H Q3 with the standard BUILDING segment and 1995-03-15 date parameter.
+
+[select]
+(list l_orderkey (sum (* l_extendedprice (- 1 l_discount))) o_orderdate o_shippriority)
+
+[from]
+(join inner (= o_orderkey l_orderkey)
+    (join inner (= c_custkey o_custkey)
+        (scan customer (list c_custkey c_mktsegment c_name c_address c_nationkey c_phone c_acctbal))
+        (scan orders (list o_orderkey o_custkey o_orderdate o_shippriority o_totalprice o_orderstatus))
+    )
+    (scan lineitem (list l_orderkey l_extendedprice l_discount l_shipdate l_commitdate l_quantity l_partkey l_suppkey))
+)
+
+[where]
+(and (= c_mktsegment 'BUILDING')
+    (and (< o_orderdate 19950315) (> l_shipdate 19950315))
+)
+
+[groupby]
+(list l_orderkey o_orderdate o_shippriority)
+
+[orderby]
+(list (desc (sum (* l_extendedprice (- 1 l_discount)))) (asc o_orderdate))
+
+[limit]
+10
